@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">slidetodismiss</string>
+    <string name="transition_label">current_swipe_state</string>
+</resources>
