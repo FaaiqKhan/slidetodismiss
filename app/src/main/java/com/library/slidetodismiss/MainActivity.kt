@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.tooling.preview.Preview
 import com.library.slide_to_dismiss.SlideToDismiss
 import com.library.slidetodismiss.data.User
 import com.library.slidetodismiss.data.UserDataProvider
@@ -45,6 +46,7 @@ fun SwipeToDismissDemo(users: List<User>, modifier: Modifier = Modifier) {
                 data = localUser[index],
                 modifier = Modifier.fillMaxWidth(),
                 onDismiss = { value -> localUser = localUser.filter { it.name != value?.name } },
+                animateIcon = index == 1
             ) {
                 Card(
                     modifier = Modifier
@@ -58,6 +60,48 @@ fun SwipeToDismissDemo(users: List<User>, modifier: Modifier = Modifier) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun SlideToDismissPreview() {
+    SlideToDismiss<String>(
+        modifier = Modifier.fillMaxWidth(),
+        onDismiss = {  },
+    ) {
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .defaultMinSize(minHeight = dimensionResource(id = R.dimen.card_minimum_height))
+                .align(Alignment.CenterVertically),
+        ) {
+            Text(
+                text = "Slide to dismiss",
+                modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))
+            )
+        }
+    }
+}
+@Preview
+@Composable
+private fun SlideToDismissStaticIconPreview() {
+    SlideToDismiss<String>(
+        modifier = Modifier.fillMaxWidth(),
+        onDismiss = {  },
+        animateIcon = false
+    ) {
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .defaultMinSize(minHeight = dimensionResource(id = R.dimen.card_minimum_height))
+                .align(Alignment.CenterVertically),
+        ) {
+            Text(
+                text = "Slide to dismiss",
+                modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))
+            )
         }
     }
 }

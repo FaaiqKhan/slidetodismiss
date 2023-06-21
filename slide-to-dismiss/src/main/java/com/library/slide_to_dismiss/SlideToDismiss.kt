@@ -12,11 +12,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
@@ -34,15 +36,14 @@ fun <T> SlideToDismiss(
     onDismiss: (data: T?) -> Unit = {},
     iconTint: Color = Color.Red,
     icon: ImageVector = Icons.Default.Delete,
+    animateIcon: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
+    var iconWidth by remember { mutableStateOf(0f) }
     var selected by remember { mutableStateOf(false) }
 
     val offsetX = remember { Animatable(0f) }
-    val transition = updateTransition(
-        selected,
-        label = stringResource(id = R.string.transition_label)
-    )
+    val transition = updateTransition(selected, stringResource(id = R.string.transition_label))
 
     val swipeModifier = modifier
         .defaultMinSize(minHeight = dimensionResource(id = R.dimen.minimum_height))
@@ -81,39 +82,50 @@ fun <T> SlideToDismiss(
                         upperBound = 0f,
                     )
                     launch {
-                        // Slide back
-                        offsetX.animateTo(
-                            targetValue = 0f,
-                            initialVelocity = velocity
-                        )
-                        if (targetOffsetX.absoluteValue > (size.width / 10)) {
-                            selected = !selected
+                        selected = if (targetOffsetX.absoluteValue <= (size.width / 10)) {
+                            // Slide back
+                            offsetX.animateTo(targetValue = 0f, initialVelocity = velocity)
+                            false
+                        } else {
+                            offsetX.animateTo(
+                                targetValue = if (selected) 0f else iconWidth,
+                                initialVelocity = velocity
+                            )
+                            !selected
                         }
                     }
                 }
             }
         }
 
-    Row(
-        modifier = swipeModifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        content()
-        // AnimatedVisibility as a part of the transition.
-        transition.AnimatedVisibility(
-            exit = shrinkHorizontally(),
-            enter = expandHorizontally(),
-            visible = { targetSelected -> targetSelected },
-        ) {
+    var slideIconModifier = iconModifier
+        .onGloballyPositioned {
+            iconWidth = it.size.width
+                .toFloat()
+                .unaryMinus()
+        }
+        .clickable { onDismiss(data) }
+
+    Box(contentAlignment = Alignment.CenterEnd) {
+        transition.AnimatedVisibility(visible = { true }) {
+            if (animateIcon) {
+                slideIconModifier = slideIconModifier
+                    .animateEnterExit()
+                    .alpha(if (selected) 1f else 0f)
+            }
             Icon(
                 tint = iconTint,
                 imageVector = icon,
                 contentDescription = null,
-                modifier = iconModifier
-                    .weight(1f)
-                    .clickable { onDismiss(data) },
+                modifier = slideIconModifier
             )
+        }
+        Row(
+            modifier = swipeModifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            content()
         }
     }
 }

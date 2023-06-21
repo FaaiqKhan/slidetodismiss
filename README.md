@@ -38,6 +38,7 @@ onDismiss: (data: T?) -> Function when dismiss icon pressed, return the same dat
 iconTint: Color -> Color of dismiss icon by default it's red.
 icon: ImageVector -> Dismiss icon by default it's Icons.Default.Delete.
 content: @Composable -> It takes composables ans has `Row scope`.
+animateIcon: Boolean -> Animate icon `FadeIn` and `FadeOut` if set to true, by default it's value is true. 
 ```
 
 ## Hint 
