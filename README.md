@@ -1,6 +1,6 @@
 # Slide to dismiss
 
-This library is build the feature slide to dismiss the item. It is developed using Jetpack compose.
+This library helps you to build the feature slide to dismiss the item. It is developed using Jetpack compose.
 
 ## Built With 🛠
 
