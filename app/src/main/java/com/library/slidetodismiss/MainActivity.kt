@@ -5,6 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,7 +49,7 @@ fun SwipeToDismissDemo(users: List<User>, modifier: Modifier = Modifier) {
                 data = localUser[index],
                 modifier = Modifier.fillMaxWidth(),
                 onDismiss = { value -> localUser = localUser.filter { it.name != value?.name } },
-                animateIcon = index == 1
+                icons = listOf(Icons.Default.Share)
             ) {
                 Card(
                     modifier = Modifier
@@ -90,7 +93,6 @@ private fun SlideToDismissStaticIconPreview() {
     SlideToDismiss<String>(
         modifier = Modifier.fillMaxWidth(),
         onDismiss = {  },
-        animateIcon = false
     ) {
         Card(
             modifier = Modifier
