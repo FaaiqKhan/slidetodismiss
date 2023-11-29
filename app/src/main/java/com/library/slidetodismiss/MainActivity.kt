@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
             SlidetodismissTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    SwipeToDismissDemo(UserDataProvider.users)
+                    SwipeToDismissDemo2(UserDataProvider.users)
                 }
             }
         }
@@ -50,6 +50,31 @@ fun SwipeToDismissDemo(users: List<User>, modifier: Modifier = Modifier) {
                 rightIcon = Icons.Default.Share,
                 leftIconTint = Color.Red,
                 rightIconTint = Color.Red,
+            ) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Name: ${localUser[index].name}, Age: ${localUser[index].age}",
+                        modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SwipeToDismissDemo2(users: List<User>, modifier: Modifier = Modifier) {
+    var localUser by remember { mutableStateOf(users) }
+    LazyColumn(
+        modifier = modifier.padding(horizontal = dimensionResource(id = R.dimen.padding_large)),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
+    ) {
+        items(count = localUser.size, key = { index: Int -> localUser[index].id }) { index ->
+            SlideToDismiss(
+                data = localUser[index],
+                onDismissed = { value ->
+                    localUser = localUser.filter { it.name != value?.name }
+                }
             ) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Text(

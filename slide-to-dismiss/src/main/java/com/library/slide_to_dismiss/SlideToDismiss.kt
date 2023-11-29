@@ -34,6 +34,7 @@ fun <T> SlideToDismiss(
     rightIcon: ImageVector? = null,
     leftAction: (data: T?) -> Unit = {},
     rightAction: (data: T?) -> Unit = {},
+    onDismissed: (data: T?) -> Unit = {},
     content: @Composable RowScope.() -> Unit
 ) {
     val offsetX = remember { Animatable(0f) }
@@ -41,6 +42,112 @@ fun <T> SlideToDismiss(
     var iconWidth by remember { mutableStateOf(0f) }
     var selected by remember { mutableStateOf(false) }
     var scope: CoroutineScope? = null
+
+    val sliderModifier: Modifier
+
+    if (leftIcon == null && rightIcon == null) {
+        sliderModifier = Modifier.pointerInput(Unit) {
+            val decay = splineBasedDecay<Float>(this)
+            coroutineScope {
+                scope = this@coroutineScope
+                while (true) {
+                    val velocityTracker = VelocityTracker()
+                    // Stop any ongoing animation.
+                    offsetX.stop()
+                    awaitPointerEventScope {
+                        // Detect a touch down event.
+                        val pointerId = awaitFirstDown().id
+
+                        horizontalDrag(pointerId) { change ->
+                            // Update the animation value with touch events.
+                            launch {
+                                offsetX.snapTo(
+                                    offsetX.value + change.positionChange().x
+                                )
+                            }
+                            velocityTracker.addPosition(
+                                change.uptimeMillis,
+                                change.position
+                            )
+                        }
+                    }
+                    // No longer receiving touch events. Prepare the animation.
+                    val velocity = velocityTracker.calculateVelocity().x
+                    val targetOffsetX = decay.calculateTargetValue(
+                        offsetX.value,
+                        velocity
+                    )
+                    // The animation stops when it reaches the bounds.
+                    offsetX.updateBounds(
+                        lowerBound = -size.width.toFloat(),
+                        upperBound = size.width.toFloat()
+                    )
+                    launch {
+                        if (targetOffsetX.absoluteValue <= size.width / 1.5f) {
+                            offsetX.animateTo(targetValue = 0f, initialVelocity = velocity)
+                        } else {
+                            offsetX.animateDecay(velocity, decay)
+                            onDismissed(data)
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        sliderModifier = Modifier.pointerInput(Unit) {
+            val decay = splineBasedDecay<Float>(this)
+            coroutineScope {
+                scope = this@coroutineScope
+                while (true) {
+                    // Stop any ongoing animation.
+                    offsetX.stop()
+
+                    // The animation stops when it reaches the bounds.
+                    offsetX.updateBounds(
+                        lowerBound = -size.width / 4f,
+                        upperBound = size.width / 4f
+                    )
+
+                    awaitPointerEventScope {
+                        val pointerId = awaitFirstDown().id // Detect a touch down event.
+                        horizontalDrag(pointerId) { change ->
+                            // Update the animation value with touch events.
+                            if (leftIcon == null && change.positionChange().x > 0)
+                                return@horizontalDrag
+                            if (rightIcon == null && change.positionChange().x < 0)
+                                return@horizontalDrag
+                            launch {
+                                offsetX.snapTo(offsetX.value.plus(change.positionChange().x))
+                            }
+                        }
+                    }
+
+                    launch {
+                        // No longer receiving touch events. Prepare the animation.
+                        val velocity = VelocityTracker().calculateVelocity().x
+                        val targetOffsetX =
+                            decay.calculateTargetValue(offsetX.value, velocity)
+
+                        selected = if (targetOffsetX.absoluteValue <= size.width / 10) {
+                            offsetX.animateTo(targetValue = 0f, initialVelocity = velocity)
+                            false
+                        } else {
+                            offsetX.animateTo(
+                                targetValue = if (selected) {
+                                    0f
+                                } else {
+                                    if (offsetX.value >= 0) iconWidth * -1
+                                    else iconWidth
+                                },
+                                initialVelocity = velocity
+                            )
+                            !selected
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Box(
         modifier = modifier.defaultMinSize(minHeight = dimensionResource(id = R.dimen.minimum_height)),
@@ -66,62 +173,7 @@ fun <T> SlideToDismiss(
             }
         }
         Row(
-            modifier = Modifier
-                .pointerInput(Unit) {
-                    val decay = splineBasedDecay<Float>(this)
-                    coroutineScope {
-                        scope = this@coroutineScope
-                        while (true) {
-                            if (leftIcon == null && rightIcon == null) return@coroutineScope
-
-                            offsetX.stop() // Stop any ongoing animation.
-
-                            // The animation stops when it reaches the bounds.
-                            offsetX.updateBounds(
-                                lowerBound = -size.width / 4f,
-                                upperBound = size.width / 4f
-                            )
-
-                            awaitPointerEventScope {
-                                val pointerId = awaitFirstDown().id // Detect a touch down event.
-                                horizontalDrag(pointerId) { change ->
-                                    // Update the animation value with touch events.
-                                    if (leftIcon == null && change.positionChange().x > 0)
-                                        return@horizontalDrag
-                                    if (rightIcon == null && change.positionChange().x < 0)
-                                        return@horizontalDrag
-                                    launch {
-                                        offsetX.snapTo(offsetX.value.plus(change.positionChange().x))
-                                    }
-                                }
-                            }
-
-                            launch {
-                                // No longer receiving touch events. Prepare the animation.
-                                val velocity = VelocityTracker().calculateVelocity().x
-                                val targetOffsetX =
-                                    decay.calculateTargetValue(offsetX.value, velocity)
-
-                                selected = if (targetOffsetX.absoluteValue <= size.width / 10) {
-                                    offsetX.animateTo(targetValue = 0f, initialVelocity = velocity)
-                                    false
-                                } else {
-                                    offsetX.animateTo(
-                                        targetValue = if (selected) {
-                                            0f
-                                        } else {
-                                            if (offsetX.value >= 0) iconWidth * -1
-                                            else iconWidth
-                                        },
-                                        initialVelocity = velocity
-                                    )
-                                    !selected
-                                }
-                            }
-                        }
-                    }
-                }
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) },
+            modifier = sliderModifier.offset { IntOffset(offsetX.value.roundToInt(), 0) },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
             content = content
