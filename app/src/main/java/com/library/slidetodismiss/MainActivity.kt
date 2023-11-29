@@ -10,8 +10,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.tooling.preview.Preview
 import com.library.slide_to_dismiss.SlideToDismiss
@@ -26,10 +26,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             SlidetodismissTheme {
                 // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     SwipeToDismissDemo(UserDataProvider.users)
                 }
             }
@@ -47,16 +44,14 @@ fun SwipeToDismissDemo(users: List<User>, modifier: Modifier = Modifier) {
         items(count = localUser.size, key = { index: Int -> localUser[index].id }) { index ->
             SlideToDismiss(
                 data = localUser[index],
-                modifier = Modifier.fillMaxWidth(),
-                onDismiss = { value -> localUser = localUser.filter { it.name != value?.name } },
-                icons = listOf(Icons.Default.Share)
+                leftAction = { value -> localUser = localUser.filter { it.name != value?.name } },
+                rightAction = {},
+                leftIcon = Icons.Default.Delete,
+                rightIcon = Icons.Default.Share,
+                leftIconTint = Color.Red,
+                rightIconTint = Color.Red,
             ) {
-                Card(
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = dimensionResource(id = R.dimen.card_minimum_height))
-                        .align(Alignment.CenterVertically),
-                ) {
+                Card(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Name: ${localUser[index].name}, Age: ${localUser[index].age}",
                         modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))
@@ -69,37 +64,12 @@ fun SwipeToDismissDemo(users: List<User>, modifier: Modifier = Modifier) {
 
 @Preview
 @Composable
-private fun SlideToDismissPreview() {
-    SlideToDismiss<String>(
-        modifier = Modifier.fillMaxWidth(),
-        onDismiss = {  },
-    ) {
-        Card(
-            modifier = Modifier
-                .weight(1f)
-                .defaultMinSize(minHeight = dimensionResource(id = R.dimen.card_minimum_height))
-                .align(Alignment.CenterVertically),
-        ) {
-            Text(
-                text = "Slide to dismiss",
-                modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))
-            )
-        }
-    }
-}
-@Preview
-@Composable
 private fun SlideToDismissStaticIconPreview() {
     SlideToDismiss<String>(
         modifier = Modifier.fillMaxWidth(),
-        onDismiss = {  },
+        leftAction = { },
     ) {
-        Card(
-            modifier = Modifier
-                .weight(1f)
-                .defaultMinSize(minHeight = dimensionResource(id = R.dimen.card_minimum_height))
-                .align(Alignment.CenterVertically),
-        ) {
+        Card(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = "Slide to dismiss",
                 modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_medium))
