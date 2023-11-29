@@ -1,13 +1,12 @@
 package com.library.slide_to_dismiss
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.calculateTargetValue
+import androidx.compose.animation.splineBasedDecay
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,112 +19,173 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun <T> SlideToDismiss(
     modifier: Modifier = Modifier,
-    iconModifier: Modifier = Modifier,
+    leftIconTint: Color = Color.Red,
+    rightIconTint: Color = Color.Red,
     data: T? = null,
-    onDismiss: (data: T?) -> Unit = {},
-    iconTint: Color = Color.Red,
-    icon: ImageVector = Icons.Default.Delete,
-    animateIcon: Boolean = true,
+    leftIcon: ImageVector? = null,
+    rightIcon: ImageVector? = null,
+    leftAction: (data: T?) -> Unit = {},
+    rightAction: (data: T?) -> Unit = {},
     content: @Composable RowScope.() -> Unit
 ) {
+    val offsetX = remember { Animatable(0f) }
+
     var iconWidth by remember { mutableStateOf(0f) }
     var selected by remember { mutableStateOf(false) }
+    var scope: CoroutineScope? = null
 
-    val offsetX = remember { Animatable(0f) }
-    val transition = updateTransition(selected, stringResource(id = R.string.transition_label))
+    Box(
+        modifier = modifier.defaultMinSize(minHeight = dimensionResource(id = R.dimen.minimum_height)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            leftIcon?.let {
+                Icon(
+                    imageVector = leftIcon,
+                    contentDescription = null,
+                    tint = leftIconTint,
+                )
+            }
+            rightIcon?.let {
+                Icon(
+                    imageVector = rightIcon,
+                    contentDescription = null,
+                    tint = rightIconTint,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .pointerInput(Unit) {
+                    val decay = splineBasedDecay<Float>(this)
+                    coroutineScope {
+                        scope = this@coroutineScope
+                        while (true) {
+                            if (leftIcon == null && rightIcon == null) return@coroutineScope
 
-    val swipeModifier = modifier
-        .defaultMinSize(minHeight = dimensionResource(id = R.dimen.minimum_height))
-        .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-        .pointerInput(Unit) {
-            val decay = splineBasedDecay<Float>(this)
-            coroutineScope {
-                while (true) {
-                    val velocityTracker = VelocityTracker()
-                    // Stop any ongoing animation.
-                    offsetX.stop()
-                    awaitPointerEventScope {
-                        // Detect a touch down event.
-                        val pointerId = awaitFirstDown().id
+                            offsetX.stop() // Stop any ongoing animation.
 
-                        horizontalDrag(pointerId) { change ->
-                            // Update the animation value with touch events.
-                            val targetPosition = offsetX.value + change.positionChange().x
-                            if (targetPosition > 0)
-                                return@horizontalDrag
-                            launch { offsetX.snapTo(targetValue = targetPosition) }
-                            velocityTracker.addPosition(change.uptimeMillis, change.position)
-                        }
-                    }
-                    // No longer receiving touch events. Prepare the animation.
-                    val velocity = velocityTracker.calculateVelocity().x
-                    val targetOffsetX = decay.calculateTargetValue(
-                        offsetX.value,
-                        velocity
-                    )
-                    // The animation stops when it reaches the bounds.
-                    offsetX.updateBounds(
-                        lowerBound = (size.width / 4)
-                            .toFloat()
-                            .unaryMinus(),
-                        upperBound = 0f,
-                    )
-                    launch {
-                        selected = if (targetOffsetX.absoluteValue <= (size.width / 10)) {
-                            // Slide back
-                            offsetX.animateTo(targetValue = 0f, initialVelocity = velocity)
-                            false
-                        } else {
-                            offsetX.animateTo(
-                                targetValue = if (selected) 0f else iconWidth,
-                                initialVelocity = velocity
+                            // The animation stops when it reaches the bounds.
+                            offsetX.updateBounds(
+                                lowerBound = -size.width / 4f,
+                                upperBound = size.width / 4f
                             )
-                            !selected
+
+                            awaitPointerEventScope {
+                                val pointerId = awaitFirstDown().id // Detect a touch down event.
+                                horizontalDrag(pointerId) { change ->
+                                    // Update the animation value with touch events.
+                                    if (leftIcon == null && change.positionChange().x > 0)
+                                        return@horizontalDrag
+                                    if (rightIcon == null && change.positionChange().x < 0)
+                                        return@horizontalDrag
+                                    launch {
+                                        offsetX.snapTo(offsetX.value.plus(change.positionChange().x))
+                                    }
+                                }
+                            }
+
+                            launch {
+                                // No longer receiving touch events. Prepare the animation.
+                                val velocity = VelocityTracker().calculateVelocity().x
+                                val targetOffsetX =
+                                    decay.calculateTargetValue(offsetX.value, velocity)
+
+                                selected = if (targetOffsetX.absoluteValue <= size.width / 10) {
+                                    offsetX.animateTo(targetValue = 0f, initialVelocity = velocity)
+                                    false
+                                } else {
+                                    offsetX.animateTo(
+                                        targetValue = if (selected) {
+                                            0f
+                                        } else {
+                                            if (offsetX.value >= 0) iconWidth * -1
+                                            else iconWidth
+                                        },
+                                        initialVelocity = velocity
+                                    )
+                                    !selected
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
-
-    var slideIconModifier = iconModifier
-        .onGloballyPositioned {
-            iconWidth = it.size.width
-                .toFloat()
-                .unaryMinus()
-        }
-        .clickable { onDismiss(data) }
-
-    Box(contentAlignment = Alignment.CenterEnd) {
-        transition.AnimatedVisibility(visible = { true }) {
-            if (animateIcon) {
-                slideIconModifier = slideIconModifier
-                    .animateEnterExit()
-                    .alpha(if (selected) 1f else 0f)
-            }
-            Icon(
-                tint = iconTint,
-                imageVector = icon,
-                contentDescription = null,
-                modifier = slideIconModifier
-            )
-        }
-        Row(
-            modifier = swipeModifier,
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
+            content = content
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(0f),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            content()
+            leftIcon?.let {
+                Icon(
+                    imageVector = leftIcon,
+                    contentDescription = null,
+                    tint = leftIconTint,
+                    modifier = Modifier
+                        .onGloballyPositioned {
+                            iconWidth = (it.size.width + 8)
+                                .toFloat()
+                                .unaryMinus()
+                        }
+                        .clickable {
+                            if (offsetX.value > 0) {
+                                scope?.run {
+                                    launch {
+                                        selected = false
+                                        offsetX.animateTo(
+                                            targetValue = 0f,
+                                            initialVelocity = VelocityTracker().calculateVelocity().x
+                                        )
+                                    }
+                                }
+                                leftAction(data)
+                            }
+                        }
+                )
+            }
+            rightIcon?.let {
+                Icon(
+                    imageVector = rightIcon,
+                    contentDescription = null,
+                    tint = rightIconTint,
+                    modifier = Modifier
+                        .onGloballyPositioned {
+                            iconWidth = (it.size.width + 8)
+                                .toFloat()
+                                .unaryMinus()
+                        }
+                        .clickable {
+                            if (offsetX.value < 0) {
+                                scope?.run {
+                                    launch {
+                                        selected = false
+                                        offsetX.animateTo(
+                                            targetValue = 0f,
+                                            initialVelocity = VelocityTracker().calculateVelocity().x
+                                        )
+                                    }
+                                }
+                                rightAction(data)
+                            }
+                        }
+                )
+            }
         }
     }
 }
