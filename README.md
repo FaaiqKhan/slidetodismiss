@@ -1,6 +1,6 @@
 # Slide to dismiss
 
-This library helps you to build the feature slide to dismiss the item. It is developed using Jetpack compose.
+This library provides the functionality of slide to dismiss the item feature. It is developed using Jetpack compose.
 
 ## Built With 🛠
 
@@ -14,32 +14,89 @@ This library helps you to build the feature slide to dismiss the item. It is dev
     Jetpack Compose UIs with Material Design 3 Components, the next evolution of Material Design
 
 # How to use :writing_hand:
+#### Left icon only
 ```
 LazyColumn {
     items(count = 2, key = { index: Int -> index }) { count ->
         SlideToDismiss(
             data = count,
-            modifier = Modifier.fillMaxWidth(),
-            onDismiss = { },
+            leftAction = {},
+            leftIcon = Icons.Default.share,
+            leftIconTint = Color.Green
         ) {
-            Card(modifier = Modifier.weight(1f)) {
+            Card {
                 Text(text = count.toString())
             }
         }
     }
+}
+```
+#### Right icon only
+```
+LazyColumn {
+    items(count = 2, key = { index: Int -> index }) { count ->
+        SlideToDismiss(
+            data = count,
+            rightAction = {},
+            rightIcon = Icons.Default.Delete,
+            rightIconTint = Color.Red
+        ) {
+            Card {
+                Text(text = count.toString())
+            }
+        }
+    }
+}
+```
+#### With left and Right icon
+```
+LazyColumn {
+    items(count = 2, key = { index: Int -> index }) { count ->
+        SlideToDismiss(
+            data = count,
+            leftAction = {},
+            leftIcon = Icons.Default.Share,
+            leftIconTint = Color.Green,
+            rightAction = {},
+            rightIcon = Icons.Default.Delete,
+            rightIconTint = Color.Red
+        ) {
+            Card {
+                Text(text = count.toString())
+            }
+        }
+    }
+}
+```
+#### Without icons
+```
+LazyColumn {
+    items(count = 2, key = { index: Int -> index }) { count ->
+        SlideToDismiss(
+            data = count,
+            onDismiss = {},
+        ) {
+            Card {
+                Text(text = count.toString())
+            }
+        }
+    }
+}
 ```
 
 ## Arguments
 ```
-modifier: Modifier -> For modifications and update appearance of `SlideToDismiss` view. 
-iconModifier: Modifier -> For icon modifications and update in appearance of `SlideToDismiss icon` view.
-data: T? -> (optional) Pass if you want the dismissed item or identifier of dismissed iteam.
-onDismiss: (data: T?) -> Function when dismiss icon pressed, return the same data which was provided in `data` field.
-iconTint: Color -> Color of dismiss icon by default it's red.
-icon: ImageVector -> Dismiss icon by default it's Icons.Default.Delete.
-content: @Composable -> It takes composables ans has `Row scope`.
-animateIcon: Boolean -> Animate icon `FadeIn` and `FadeOut` if set to true, by default it's value is true. 
+modifier: Modifier -> For modifications and update appearance of main view.
+leftIconTint: Color -> (optional) Default value is red.
+rightIconTint: Color -> (optional) Default value is red.
+data: T -> (optional) Return data on dismiss.
+leftIcon: ImageVector -> (optional) Icon.
+rightIcon: ImageVector -> (optional) Icon.
+leftAction: (data: T) -> (optional) Function return data on dismess.
+rightAction: (data: T) -> (optional) Function return data on dismiss.
+onDismiss: (data: T) -> (optional) Function return data on dismiss.
+content: @Composable -> It takes `Row scope` composables.
 ```
 
-## Hint 
+## Hint
     If you want to give content fill width then use weight() rather then fillMaxWidth() of modifier.
